@@ -19,6 +19,7 @@ import com.everis.storage.model.JSonDao;
 import com.everis.storage.model.JsonCompareObject;
 import com.everis.storage.model.Requests;
 import com.everis.storage.model.ResponseFinal;
+import com.google.api.client.util.Value;
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Acl;
@@ -37,6 +38,9 @@ import reactor.core.publisher.Mono;
 @Service
 public class GoogleService {
 
+	@Value("${Credenciales.google}")
+    private String credencial;
+	
 	final String API_BASE_URL = "https://vision.googleapis.com";
     //final String API_BASE_URL = "https://webhook.site/08c7ce57-7ba5-454a-9f14-035d9f058953";
     final String API_URI = "/v1p4beta1/images:annotate";
@@ -95,9 +99,9 @@ public class GoogleService {
     public ResponseFinal googleStorage(byte[] imagenString, String JsonCompare) throws FileNotFoundException, IOException
 	{
 		
-
+        
 		Credentials credentials = GoogleCredentials
-                .fromStream(new FileInputStream("C:/credenciales/Clave.json"));
+                .fromStream(new FileInputStream(credencial));
       
 		
 		Storage storage1 = StorageOptions.newBuilder().setCredentials(credentials)

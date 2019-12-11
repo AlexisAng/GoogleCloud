@@ -24,19 +24,19 @@ public class FluxStorageController {
 	GoogleService service;
 
 	@RequestMapping(value = "/imagen", method = RequestMethod.POST)
-	public ResponseFinal imagen(@RequestParam("file") MultipartFile file,
+	public Flux<Object> imagen(@RequestParam("file") MultipartFile file,
 			@RequestPart("JsonCompare") String JsonCompare) throws IOException {
 
 		// @RequestParam String JsonObject
 		byte[] fileContent = file.getBytes();
 		String JsonCompare1 = JsonCompare;
 
-		Mono<String> mono1 = service.googleVision(fileContent);
-		ResponseFinal mono2 = service.googleStorage(fileContent, JsonCompare1);
+//		Mono<String> mono1 = service.googleVision(fileContent);
+//		ResponseFinal mono2 = service.googleStorage(fileContent, JsonCompare1);
 
-		Flux<Object> flujo = Flux.merge(Mono.just(mono2), mono1);
+		Flux<Object> flujo  = Flux.merge(Mono.just(service.googleStorage(fileContent, JsonCompare1)),service.googleVision(fileContent));
 
-		return mono2;
+		return flujo;
 	}
 
 }
