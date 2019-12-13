@@ -9,8 +9,6 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Properties;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -24,7 +22,6 @@ import com.everis.storage.model.JSonDao;
 import com.everis.storage.model.JsonCompareObject;
 import com.everis.storage.model.Requests;
 import com.everis.storage.model.ResponseFinal;
-import com.google.api.client.util.Value;
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Acl;
@@ -32,7 +29,6 @@ import com.google.cloud.storage.Acl.Role;
 import com.google.cloud.storage.Acl.User;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;
-import com.google.cloud.storage.Bucket.BucketSourceOption;
 import com.google.cloud.storage.BucketInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BucketGetOption;
@@ -47,8 +43,6 @@ import reactor.core.publisher.Mono;
 public class GoogleService {
 
 	Properties prop = new Properties();
-
-	final String API_TEST = "https://webhook.site/08c7ce57-7ba5-454a-9f14-035d9f058953";
 
 	public Mono<String> imagen(JSonDao body) throws IOException {
 
@@ -69,6 +63,7 @@ public class GoogleService {
 
 		WebClient webClient = builder.build();
 
+		@SuppressWarnings("deprecation")
 		Mono<String> response = webClient.post().uri("/v1p4beta1/images:annotate?key={apikey}", key)
 				.body(BodyInserters.fromObject(body)).exchange().flatMap(x -> {
 					if (!x.statusCode().is2xxSuccessful())
@@ -111,81 +106,83 @@ public class GoogleService {
 		return servicio.imagen(solicitud);
 	}
 
-	public ResponseFinal googleStorage(MultipartFile file, String JsonCompare)
-			throws FileNotFoundException, IOException {
+	public ResponseFinal googleStorage(MultipartFile file, String jsonCompare) throws IOException
+		 {
 		
+		boolean imagenJsonInputValidado=validateJSonStringImageFile(file ,jsonCompare);
 		ResponseFinal responsefinal = new ResponseFinal();
+		if (imagenJsonInputValidado==true)
+		try
+		{
 		
-		boolean imagenValidada = validateImage(file);
 		
-		if(imagenValidada==true) {
-			
+		boolean imagenExtensionValidada = validateImage(file);
+		
+		if(imagenExtensionValidada==true) {
 		byte[] fileContent = file.getBytes();
+		
 		String bucketName = "prueba_17";
+		//Validar bucket existente
 		Blob blob = validateBucket(bucketName).create("my-first-blob1", fileContent);
-	    
-		boolean jsonValidado=validateJSonString(JsonCompare);
-		
-		
+		responsefinal.setRutaImagen(blob.getMediaLink());	    
 		Gson gson = new Gson();
-		JsonCompareObject jsontext = gson.fromJson(JsonCompare, JsonCompareObject.class);
-
+		JsonCompareObject jsontext = gson.fromJson(jsonCompare, JsonCompareObject.class);
 		Mono<String> imagen = googleVision(file);
 
 		String[] respuestaVision = getResponse(imagen).split("\"description\": \"");
 		String[] textoEncontrado = respuestaVision[1].split("\"");
 		Boolean found = textoEncontrado[0].contains(jsontext.getJsonCompare());
-	
 
 		int lenght2 = jsontext.getJsonCompare().length();
 		int lenght = textoEncontrado[0].length() - 2;
 		String limpieza = textoEncontrado[0].substring(0, lenght);
-		// Response final
-		
 
 		responsefinal.setTextoRequerido(limpieza);
-		responsefinal.setRutaImagen(blob.getMediaLink());
+		//responsefinal.setRutaImagen(blob.getMediaLink());
 		responsefinal.setIsSuccess(found);
 
 		if (lenght == lenght2) {
-			responsefinal.setTextoEncontrado(jsontext.getJsonCompare());
-		} else if (lenght > lenght2) {
-			responsefinal.setTextoEncontrado("La palabra es Menor a la encontrada");
-			responsefinal.setIsSuccess(false);
-		} else {
-			responsefinal.setTextoEncontrado("La palabra escrita es MAYOR a la encontrada");
-			responsefinal.setIsSuccess(false);
+				responsefinal.setTextoEncontrado(jsontext.getJsonCompare());
+			} else if (lenght > lenght2) {
+				responsefinal.setTextoEncontrado("La palabra es Menor a la encontrada");
+				responsefinal.setIsSuccess(false);
+			} else {
+				responsefinal.setTextoEncontrado("La palabra escrita es MAYOR a la encontrada");
+				System.out.println("Extension no Admitida");
+				responsefinal.setIsSuccess(false);
+			}
+		}else {
+			System.out.println("Extension de Archivo No Valida");
 		}
 		
+		}catch (IOException e) {
+			System.out.print("Error falta un campo");
+		}
+			
 		return responsefinal;
-		}
-		
-		else
-		{
-			System.out.println("Extension no Admitida");
-			return responsefinal;
-		}
-	}
+}
+
 
 	public String getResponse(Mono<String> mono) {
 		return mono.block();
 	}
-	
+
+	// Validar Imagen
 	public boolean validateImage(MultipartFile file) {
 
-	String fileName = file.getOriginalFilename().toUpperCase();
-	boolean extension = fileName.endsWith(".JPG") || fileName.endsWith(".JPEG") || fileName.endsWith(".PNG");
-	
-	if (!extension) {
-		return false;
-		 
-	   }else {
-		   return true;
-	   }
-        }
-	
-	public Bucket validateBucket ( String name) throws IOException {
-		
+		String fileName = file.getOriginalFilename().toUpperCase();
+		boolean extension = fileName.endsWith(".JPG") || fileName.endsWith(".JPEG") || fileName.endsWith(".PNG");
+
+		if (!extension) {
+			return false;
+
+		} else {
+			return true;
+		}
+	}
+
+	// Validar Bucket
+	public Bucket validateBucket(String name) throws IOException {
 
 		InputStream input = GoogleService.class.getClassLoader().getResourceAsStream("config.properties");
 		if (input == null) {
@@ -196,15 +193,14 @@ public class GoogleService {
 
 		prop.load(input);
 		String credenciales = prop.getProperty("Credencial.google");
-		
+
 		Credentials credentials = GoogleCredentials.fromStream(new FileInputStream(credenciales));
 		Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
-		
+
 		Bucket bucket = storage.get(name, BucketGetOption.fields(Storage.BucketField.values()));
-		
-		
-		if (bucket==null) {
-			
+
+		if (bucket == null) {
+
 			Bucket bucket1 = storage.create(BucketInfo.newBuilder(name)
 					// See here for possible values: http://g.co/cloud/storage/docs/storage-classes
 					.setStorageClass(StorageClass.COLDLINE)
@@ -213,18 +209,22 @@ public class GoogleService {
 					// Modify access list to allow all users with link to read file
 					.setAcl(new ArrayList<>(Arrays.asList(Acl.of(User.ofAllUsers(), Role.OWNER)))).build());
 			return bucket1;
-		
-		}
-		else {
+
+		} else {
 			Bucket updatedBucket = bucket.toBuilder().setVersioningEnabled(true).build().update();
-		return updatedBucket;
-			
+			return updatedBucket;
+
 		}
-		
-	
+
 	}
-	 
-	public boolean validateJSonString (String JsonText) {
-		return null != null;
+
+	public boolean validateJSonStringImageFile (MultipartFile file , String JsonText) {
+
+		if( JsonText != null && !JsonText.contentEquals("") && !JsonText.isEmpty() &&
+                file != null && !file.isEmpty() ){
+			return true;
+		} else {
+			return false;
+		}
 	}
 }

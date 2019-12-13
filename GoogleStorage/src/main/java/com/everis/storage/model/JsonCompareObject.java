@@ -2,16 +2,16 @@ package com.everis.storage.model;
 
 public class JsonCompareObject {
 	
-	private String JsonCompare = new String();
+	private String jsonCompare = new String();
 
 	public String getJsonCompare() {
-		return JsonCompare;
+		return jsonCompare;
 	}
 
 	public void setJsonCompare(String jsonCompare) {
-		JsonCompare = jsonCompare;
+		this.jsonCompare = jsonCompare;
 	}
-	
+
 	
 
 }
