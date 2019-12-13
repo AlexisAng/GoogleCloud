@@ -2,6 +2,8 @@ package com.everis.storage.model;
 
 public class ResponseFinal {
 	
+
+	
 	Boolean isSuccess;
 	
 	String textoRequerido;
@@ -9,6 +11,9 @@ public class ResponseFinal {
 	String textoEncontrado;
 	
 	String rutaImagen;
+	
+	
+
 
 	public Boolean getIsSuccess() {
 		return isSuccess;
