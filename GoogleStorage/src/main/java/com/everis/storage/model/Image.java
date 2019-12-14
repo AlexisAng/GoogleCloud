@@ -4,7 +4,7 @@ package com.everis.storage.model;
 public class Image {
 	
 
-	private String content = new String();
+	private String content;
 	
 	public String getContent() {
 		return content;

@@ -1,13 +1,14 @@
 package com.everis.storage.model;
 
 import java.util.ArrayList;
+import java.util.List;
 
 
 public class Requests {
 
-	Image image = new Image();
+	Image image;
 	
-	ArrayList<Features>features = new ArrayList<Features>();
+	List<Features>features = new ArrayList<>();
 
 	public Image getImage() {
 		return image;
@@ -17,13 +18,16 @@ public class Requests {
 		this.image = image;
 	}
 
-	public ArrayList<Features> getFeatures() {
+	public List<Features> getFeatures() {
 		return features;
 	}
 
-	public void setFeatures(ArrayList<Features> features) {
+	public void setFeatures(List<Features> features) {
 		this.features = features;
 	}
+
+	
+
 
 	
 

@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class Features {
 	
-	private String type = new String();
+	private String type;
 
 	public String getType() {
 		return type;

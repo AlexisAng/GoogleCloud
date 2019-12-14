@@ -1,7 +1,6 @@
 package com.everis.storage.service;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -9,6 +8,8 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Properties;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -35,45 +36,46 @@ import com.google.cloud.storage.Storage.BucketGetOption;
 import com.google.cloud.storage.StorageClass;
 import com.google.cloud.storage.StorageOptions;
 import com.google.gson.Gson;
-import com.google.protobuf.compiler.PluginProtos.CodeGeneratorResponse.File;
 
 import reactor.core.publisher.Mono;
 
 @Service
 public class GoogleService {
-
+  
+	
+	private static Logger log = LoggerFactory.getLogger(GoogleService.class);
 	Properties prop = new Properties();
 
 	public Mono<String> imagen(JSonDao body) throws IOException {
 
 		InputStream input = GoogleService.class.getClassLoader().getResourceAsStream("config.properties");
 		if (input == null) {
-			System.out.println("No se encontraron las propiedades");
+			log.info("No se encontraron las propiedades");
 		} else {
-			System.out.println("Propiedades encontradas");
+			log.info("Propiedades encontradas");
 		}
 
 		prop.load(input);
 		String key = prop.getProperty("Key.Vision");
-		String API_URL = prop.getProperty("API.BASE.URL");
-		String Api_Uri = prop.getProperty("Api.Uri");
+		String apiUrl = prop.getProperty("API.BASE.URL");
+		String apiUri = prop.getProperty("Api.Uri");
 
-		WebClient.Builder builder = WebClient.builder().baseUrl(API_URL).defaultHeader(HttpHeaders.CONTENT_TYPE,
+		WebClient.Builder builder = WebClient.builder().baseUrl(apiUrl).defaultHeader(HttpHeaders.CONTENT_TYPE,
 				MediaType.APPLICATION_JSON_VALUE);
 
 		WebClient webClient = builder.build();
 
-		@SuppressWarnings("deprecation")
-		Mono<String> response = webClient.post().uri("/v1p4beta1/images:annotate?key={apikey}", key)
-				.body(BodyInserters.fromObject(body)).exchange().flatMap(x -> {
+		
+		return webClient.post().uri("/v1p4beta1/images:annotate?key={apikey}", key)
+				.body(BodyInserters.fromValue(body)).exchange().flatMap(x -> {
 					if (!x.statusCode().is2xxSuccessful())
-						return Mono.just(Api_Uri + " Called. Error 4xx: " + x.statusCode() + "\n");
+						return Mono.just(apiUri + " Called. Error 4xx: " + x.statusCode() + "\n");
 					else {
-						System.out.println("Termine VISION");
+						log.info("Termine VISION");
 						return x.bodyToMono(String.class);
 					}
 				});
-		return response;
+		
 
 	}
 
@@ -111,18 +113,19 @@ public class GoogleService {
 		
 		boolean imagenJsonInputValidado=validateJSonStringImageFile(file ,jsonCompare);
 		ResponseFinal responsefinal = new ResponseFinal();
-		if (imagenJsonInputValidado==true)
+		
+		if(imagenJsonInputValidado) {
 		try
 		{
 		
 		
 		boolean imagenExtensionValidada = validateImage(file);
 		
-		if(imagenExtensionValidada==true) {
+		if(imagenExtensionValidada) {
 		byte[] fileContent = file.getBytes();
 		
 		String bucketName = "prueba_17";
-		//Validar bucket existente
+		
 		Blob blob = validateBucket(bucketName).create("my-first-blob1", fileContent);
 		responsefinal.setRutaImagen(blob.getMediaLink());	    
 		Gson gson = new Gson();
@@ -138,7 +141,7 @@ public class GoogleService {
 		String limpieza = textoEncontrado[0].substring(0, lenght);
 
 		responsefinal.setTextoRequerido(limpieza);
-		//responsefinal.setRutaImagen(blob.getMediaLink());
+		
 		responsefinal.setIsSuccess(found);
 
 		if (lenght == lenght2) {
@@ -148,18 +151,19 @@ public class GoogleService {
 				responsefinal.setIsSuccess(false);
 			} else {
 				responsefinal.setTextoEncontrado("La palabra escrita es MAYOR a la encontrada");
-				System.out.println("Extension no Admitida");
+				log.info("Extension no Admitida");
 				responsefinal.setIsSuccess(false);
 			}
 		}else {
-			System.out.println("Extension de Archivo No Valida");
+			log.info("Extension de Archivo No Valida");
 		}
 		
 		}catch (IOException e) {
-			System.out.print("Error falta un campo");
+			log.info("Error falta un campo");
 		}
-			
+		}
 		return responsefinal;
+		
 }
 
 
@@ -167,28 +171,24 @@ public class GoogleService {
 		return mono.block();
 	}
 
-	// Validar Imagen
+	
 	public boolean validateImage(MultipartFile file) {
 
 		String fileName = file.getOriginalFilename().toUpperCase();
-		boolean extension = fileName.endsWith(".JPG") || fileName.endsWith(".JPEG") || fileName.endsWith(".PNG");
-
-		if (!extension) {
-			return false;
-
-		} else {
-			return true;
-		}
+		return (fileName.endsWith(".JPG") || fileName.endsWith(".JPEG") || fileName.endsWith(".PNG"));
+		
+		
+		
 	}
 
-	// Validar Bucket
+
 	public Bucket validateBucket(String name) throws IOException {
 
 		InputStream input = GoogleService.class.getClassLoader().getResourceAsStream("config.properties");
 		if (input == null) {
-			System.out.println("No se encontraron las propiedades");
+			log.info("No se encontraron las propiedades");
 		} else {
-			System.out.println("Propiedades encontradas");
+			log.info("Propiedades encontradas");
 		}
 
 		prop.load(input);
@@ -201,30 +201,27 @@ public class GoogleService {
 
 		if (bucket == null) {
 
-			Bucket bucket1 = storage.create(BucketInfo.newBuilder(name)
-					// See here for possible values: http://g.co/cloud/storage/docs/storage-classes
+			  bucket = storage.create(BucketInfo.newBuilder(name) 
+					
 					.setStorageClass(StorageClass.COLDLINE)
-					// Possible values: http://g.co/cloud/storage/docs/bucket-locations#location-mr
+					
 					.setLocation("asia")
-					// Modify access list to allow all users with link to read file
+					
 					.setAcl(new ArrayList<>(Arrays.asList(Acl.of(User.ofAllUsers(), Role.OWNER)))).build());
-			return bucket1;
+			return bucket;
 
 		} else {
-			Bucket updatedBucket = bucket.toBuilder().setVersioningEnabled(true).build().update();
-			return updatedBucket;
+		     bucket.toBuilder().setVersioningEnabled(true).build().update();
+			return bucket;
 
 		}
 
 	}
 
-	public boolean validateJSonStringImageFile (MultipartFile file , String JsonText) {
+	public boolean validateJSonStringImageFile (MultipartFile file , String jsonText) {
 
-		if( JsonText != null && !JsonText.contentEquals("") && !JsonText.isEmpty() &&
-                file != null && !file.isEmpty() ){
-			return true;
-		} else {
-			return false;
-		}
+		return ( jsonText != null && !jsonText.contentEquals("") && !jsonText.isEmpty() &&
+                file != null && !file.isEmpty() );
 	}
+	
 }
